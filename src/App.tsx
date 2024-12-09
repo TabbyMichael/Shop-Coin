@@ -9,6 +9,11 @@ import { RegistrationForm } from './components/forms/RegistrationForm';
 import { Blockchain } from './lib/blockchain/Blockchain';
 import { ShopkeeperRegistry } from './lib/blockchain/ShopkeeperRegistry';
 import { PaymentFormData, BlockchainState } from './lib/blockchain/types';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './contexts/ToastContext';
+import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
+import { AdminInterface } from './components/admin/AdminInterface';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const blockchain = new Blockchain();
 const registry = new ShopkeeperRegistry(blockchain);
@@ -78,50 +83,60 @@ function App() {
   }, [state.loyaltyPoints]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          <NetworkStats
-            difficulty={2}
-            totalSupply={blockchain.getTotalSupply()}
-            shopkeepersCount={registry.getShopkeepersCount()}
-            lastBlockTime={blockchain.getLatestBlock().timestamp}
-          />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="space-y-8">
-              <RegistrationForm />
-              <ShopkeeperForm
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  registry.registerShopkeeper(formData.address, formData.name, formData.businessType);
-                }}
-                formData={formData}
-                onChange={handleFormChange}
-                isProcessing={state.isProcessing}
-              />
-              
-              <LoyaltyStats
-                points={state.loyaltyPoints}
-                pointsValue={state.loyaltyPoints * 0.1}
-                transactionCount={blockchain.getTransactionCount(formData.address)}
-              />
-            </div>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+            <Header />
             
-            <div className="space-y-8">
-              <PaymentForm
-                onSubmit={handlePayment}
-                isProcessing={state.isProcessing}
-              />
-              
-              <BlockViewer blocks={blockchain.chain} />
-            </div>
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="space-y-8">
+                <NetworkStats
+                  difficulty={2}
+                  totalSupply={blockchain.getTotalSupply()}
+                  shopkeepersCount={registry.getShopkeepersCount()}
+                  lastBlockTime={blockchain.getLatestBlock().timestamp}
+                />
+                
+                <AnalyticsDashboard />
+                
+                <AdminInterface />
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-8">
+                    <RegistrationForm />
+                    <ShopkeeperForm
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        registry.registerShopkeeper(formData.address, formData.name, formData.businessType);
+                      }}
+                      formData={formData}
+                      onChange={handleFormChange}
+                      isProcessing={state.isProcessing}
+                    />
+                    
+                    <LoyaltyStats
+                      points={state.loyaltyPoints}
+                      pointsValue={state.loyaltyPoints * 0.1}
+                      transactionCount={blockchain.getTransactionCount(formData.address)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-8">
+                    <PaymentForm
+                      onSubmit={handlePayment}
+                      isProcessing={state.isProcessing}
+                    />
+                    
+                    <BlockViewer blocks={blockchain.chain} />
+                  </div>
+                </div>
+              </div>
+            </main>
           </div>
-        </div>
-      </main>
-    </div>
+        </ToastProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 
