@@ -1,152 +1,240 @@
 import { useState } from 'react';
-import { Shield, Settings, AlertTriangle, Database, Server, Lock, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../../contexts/ThemeContext';
+import { 
+  CreditCard, ArrowUpRight, ArrowDownRight, Wallet
+} from 'lucide-react';
+import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
-interface AdminSettings {
-  networkDifficulty: number;
-  minRewardThreshold: number;
-  blockTime: number;
-  maxBlockSize: number;
+// Add spending data interface
+interface SpendingData {
+  name: string;
+  value: number;
+  color: string;
 }
 
 export function AdminInterface() {
-  const { theme, toggleTheme } = useTheme();
-  const [settings, setSettings] = useState<AdminSettings>({
-    networkDifficulty: 2,
-    minRewardThreshold: 100,
-    blockTime: 600, // 10 minutes in seconds
-    maxBlockSize: 1, // MB
-  });
+  const [wallets] = useState([
+    {
+      name: 'Main Wallet',
+      balance: '45,500.12',
+      address: '444 221 224 ***',
+      color: 'bg-purple-500',
+      icon: <CreditCard className="h-6 w-6" />
+    },
+    {
+      name: 'XYZ Wallet',
+      balance: '250.5',
+      address: '444 221 224 ***',
+      color: 'bg-green-500',
+      icon: <Wallet className="h-6 w-6" />
+    }
+  ]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'security' | 'network'>('overview');
+  const [transactions] = useState([
+    {
+      type: 'withdraw',
+      amount: -542,
+      timestamp: '05:24:45 AM',
+      status: 'pending'
+    },
+    {
+      type: 'topup',
+      amount: 5553,
+      timestamp: '05:24:45 AM',
+      status: 'completed'
+    }
+  ]);
 
-  const handleSettingChange = (setting: keyof AdminSettings, value: number) => {
-    setSettings(prev => ({ ...prev, [setting]: value }));
+  // Add spending data state
+  const [spendingData] = useState<SpendingData[]>([
+    { name: 'Investment', value: 24, color: '#4ade80' },  // green-400
+    { name: 'Food', value: 18, color: '#f87171' },        // red-400
+    { name: 'Restaurant', value: 21, color: '#fbbf24' },  // amber-400
+    { name: 'Rent', value: 28, color: '#60a5fa' },        // blue-400
+    { name: 'Investment', value: 9, color: '#c084fc' }    // purple-400
+  ]);
+
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent
+  }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    percent: number;
+  }) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+    const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-          <div className="flex space-x-4">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200"
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Wallets</h1>
+          <button
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            + Add Wallet
+          </button>
+        </div>
+
+        {/* Wallet Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {wallets.map((wallet, index) => (
+            <div
+              key={index}
+              className={`${wallet.color} p-6 rounded-xl text-white cursor-pointer transform transition hover:scale-105`}
             >
-              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-            </button>
-            <button className="flex items-center px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-800">
-              <Shield className="h-5 w-5 mr-2" />
-              Emergency Stop
-            </button>
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm opacity-80">{wallet.name}</span>
+                {wallet.icon}
+              </div>
+              <div className="text-2xl font-bold mb-4">${wallet.balance}</div>
+              <div className="flex items-center text-sm opacity-80">
+                <span>{wallet.address}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Card Details & Analytics */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Card Details */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm col-span-2">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-lg font-semibold">Card Details</h2>
+              <div className="flex space-x-2">
+                <button className="text-blue-600">Generate Number</button>
+                <button className="text-blue-600">Edit</button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-6">
+              {/* Card Info */}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm text-gray-500">Card Name</label>
+                  <div className="font-semibold">Main Balance</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500">Valid Date</label>
+                  <div className="font-semibold">06/21</div>
+                </div>
+                {/* ... more card details ... */}
+              </div>
+
+              {/* Usage Limits */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Main Limits</span>
+                  <span className="font-semibold">$10,000</span>
+                </div>
+                {/* ... more limits ... */}
+              </div>
+            </div>
+          </div>
+
+          {/* Spending Analytics */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-semibold mb-6">Spending Analytics</h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={spendingData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderCustomizedLabel}
+                    outerRadius={108}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {spendingData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value: number) => `${value}%`}
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}
+                  />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{
+                      paddingTop: '2rem'
+                    }}
+                  />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-8">
-          <nav className="flex space-x-4">
-            {[
-              { id: 'overview', label: 'Overview', icon: Settings },
-              { id: 'security', label: 'Security', icon: Lock },
-              { id: 'network', label: 'Network', icon: Server }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as 'overview' | 'security' | 'network')}
-                className={`flex items-center px-4 py-2 rounded-md ${
-                  activeTab === tab.id
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                }`}
-              >
-                <tab.icon className="h-5 w-5 mr-2" />
-                {tab.label}
-              </button>
+        {/* Transaction History */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg font-semibold">Wallet Activity</h2>
+            <div className="flex space-x-2">
+              <button className="px-3 py-1 rounded-full bg-gray-100">Monthly</button>
+              <button className="px-3 py-1 rounded-full bg-gray-100">Weekly</button>
+              <button className="px-3 py-1 rounded-full bg-indigo-600 text-white">Today</button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {transactions.map((tx, index) => (
+              <div key={index} className="flex items-center justify-between py-3 border-b">
+                <div className="flex items-center">
+                  {tx.type === 'withdraw' ? (
+                    <ArrowDownRight className="h-5 w-5 text-red-500 mr-3" />
+                  ) : (
+                    <ArrowUpRight className="h-5 w-5 text-green-500 mr-3" />
+                  )}
+                  <div>
+                    <div className="font-medium">{tx.type === 'withdraw' ? 'Withdraw' : 'Top-up'}</div>
+                    <div className="text-sm text-gray-500">{tx.timestamp}</div>
+                  </div>
+                </div>
+                <div className={`font-medium ${
+                  tx.type === 'withdraw' ? 'text-red-500' : 'text-green-500'
+                }`}>
+                  {tx.type === 'withdraw' ? '-' : '+'}${Math.abs(tx.amount)}
+                </div>
+                <div className={`text-sm ${
+                  tx.status === 'completed' ? 'text-green-500' : 
+                  tx.status === 'pending' ? 'text-yellow-500' : 'text-red-500'
+                }`}>
+                  {tx.status}
+                </div>
+              </div>
             ))}
-          </nav>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Network Settings */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
-            <h2 className="text-lg font-semibold mb-4 flex items-center text-gray-900 dark:text-white">
-              <Settings className="h-5 w-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-              Network Settings
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Network Difficulty
-                </label>
-                <input
-                  type="number"
-                  value={settings.networkDifficulty}
-                  onChange={(e) => handleSettingChange('networkDifficulty', +e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 
-                           shadow-sm focus:border-indigo-500 focus:ring-indigo-500 
-                           dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Block Time (seconds)
-                </label>
-                <input
-                  type="number"
-                  value={settings.blockTime}
-                  onChange={(e) => handleSettingChange('blockTime', +e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 
-                           shadow-sm focus:border-indigo-500 focus:ring-indigo-500 
-                           dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Security Alerts */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2 text-yellow-600" />
-              Security Alerts
-            </h2>
-            <div className="space-y-4">
-              <div className="p-4 bg-yellow-50 rounded-md">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                  <p className="ml-2 text-sm text-yellow-700">Unusual network activity detected</p>
-                </div>
-              </div>
-              <div className="p-4 bg-red-50 rounded-md">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 text-red-400" />
-                  <p className="ml-2 text-sm text-red-700">Multiple failed login attempts</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Network Status */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <Database className="h-5 w-5 mr-2 text-green-600" />
-              Network Status
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Active Nodes</span>
-                <span className="text-sm font-medium">127</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Current Block Height</span>
-                <span className="text-sm font-medium">1,234,567</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Network Hash Rate</span>
-                <span className="text-sm font-medium">45.7 TH/s</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
