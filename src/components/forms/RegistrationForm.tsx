@@ -26,7 +26,7 @@ export function RegistrationForm() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleInputChange = (field: keyof RegistrationData, value: any) => {
+  const handleInputChange = <T extends keyof RegistrationData>(field: T, value: RegistrationData[T]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 

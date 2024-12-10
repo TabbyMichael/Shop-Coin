@@ -27,7 +27,7 @@ export function BlockViewer({ blocks }: BlockViewerProps) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center space-x-2">
               <Database className="h-4 w-4 text-gray-500" />
-              <span className="text-sm text-gray-500">Block {index}</span>
+              <span className="text-sm text-gray-500">Block {index + 1}</span>
             </div>
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-gray-500" />
