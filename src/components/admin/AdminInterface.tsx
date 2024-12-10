@@ -3,6 +3,7 @@ import {
   CreditCard, ArrowUpRight, ArrowDownRight, Wallet
 } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { ShopCoinToken } from '../../lib/blockchain/contracts/ShopCoinToken';
 
 // Add spending data interface
 interface SpendingData {
@@ -52,6 +53,45 @@ export function AdminInterface() {
     { name: 'Rent', value: 28, color: '#60a5fa' },        // blue-400
     { name: 'Investment', value: 9, color: '#c084fc' }    // purple-400
   ]);
+
+  // Initialize token
+  const [token] = useState(() => new ShopCoinToken());
+  
+  // Add merchant management state
+  const [merchantData, setMerchantData] = useState<{
+    address: string;
+    stakedAmount: number;
+    feeRate: number;
+    pointBalance: number;
+  }>({
+    address: '',
+    stakedAmount: 0,
+    feeRate: 0,
+    pointBalance: 0
+  });
+
+  // Add handlers for new features
+  const handlePointConversion = async (points: number) => {
+    try {
+      await token.convertPointsToTokens(points);
+      // Update UI
+    } catch (error) {
+      console.error('Error converting points to tokens:', error);
+      // Handle error
+    }
+  };
+
+  const handleStake = async (amount: number) => {
+    try {
+      await token.stake(amount);
+      setMerchantData(prev => ({
+        ...prev,
+        stakedAmount: prev.stakedAmount + amount
+      }));
+    } catch (error) {
+      console.error('Error staking:', error);
+    }
+  };
 
   const renderCustomizedLabel = ({
     cx,
@@ -140,6 +180,14 @@ export function AdminInterface() {
                   <label className="text-sm text-gray-500">Valid Date</label>
                   <div className="font-semibold">06/21</div>
                 </div>
+                <div>
+                  <label className="text-sm text-gray-500">Staked Amount</label>
+                  <div className="font-semibold">{merchantData.stakedAmount} SC</div>
+                </div>
+                <div>
+                  <label className="text-sm text-gray-500">Fee Rate</label>
+                  <div className="font-semibold">{(merchantData.feeRate * 100).toFixed(2)}%</div>
+                </div>
                 {/* ... more card details ... */}
               </div>
 
@@ -148,6 +196,24 @@ export function AdminInterface() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Main Limits</span>
                   <span className="font-semibold">$10,000</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Convert Points</span>
+                  <button 
+                    onClick={() => handlePointConversion(100)}
+                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Convert 100 Points
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Stake Tokens</span>
+                  <button 
+                    onClick={() => handleStake(1000)}
+                    className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    Stake 1000 SC
+                  </button>
                 </div>
                 {/* ... more limits ... */}
               </div>
