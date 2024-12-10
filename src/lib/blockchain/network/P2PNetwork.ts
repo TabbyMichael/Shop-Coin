@@ -8,194 +8,142 @@ interface NetworkMessage {
   type: 'TRANSACTION' | 'BLOCK' | 'PEER_DISCOVERY' | 'SYNC_REQUEST' | 'SYNC_RESPONSE';
   data: Transaction | Block | { nodeId: string } | null;
   timestamp: number;
-  sender: string;
 }
 
 export class P2PNetwork implements NetworkProtocol {
-  private peers: Map<string, WebSocket> = new Map();
-  private server: WebSocket.Server | undefined;
-  private nodeId: string;
-  private readonly SYNC_INTERVAL = 30000; // 30 seconds
-  
-  constructor(
-    private port: number,
-    private blockchain: Blockchain,
-    private mempool: Set<Transaction>
-  ) {
-    this.nodeId = Math.random().toString(36).substring(7);
-    this.initializeServer();
-    this.startSyncInterval();
+  private wss: WebSocket.Server;
+  private peers: Set<WebSocket> = new Set();
+
+  constructor(port: number, private blockchain: Blockchain, private mempool: Set<Transaction>) {
+    this.wss = new WebSocket.Server({ port });
+    this.wss.on('connection', (ws) => this.onConnection(ws));
+    console.log(`P2P network started on port ${port}`);
   }
 
-  private initializeServer(): void {
-    this.server = new WebSocket.Server({ port: this.port });
-    
-    this.server.on('connection', (socket: WebSocket) => {
-      this.handleConnection(socket);
-    });
-
-    console.log(`P2P Server running on port ${this.port}`);
+  private onConnection(ws: WebSocket) {
+    this.peers.add(ws);
+    this.broadcastPeerDiscovery();
+    ws.on('message', (message: string) => this.onMessage(ws, message));
+    ws.on('close', () => this.peers.delete(ws));
   }
 
-  private handleConnection(socket: WebSocket): void {
-    socket.on('message', (data: string) => {
-      const message: NetworkMessage = JSON.parse(data);
-      this.handleMessage(message, socket);
-    });
-
-    // Send peer discovery message
-    this.broadcast({
+  private broadcastPeerDiscovery() {
+    const peerDiscoveryMessage: NetworkMessage = {
       type: 'PEER_DISCOVERY',
-      data: { nodeId: this.nodeId },
+      data: { nodeId: this.getNodeId() }, // Assuming a method to get the node ID
       timestamp: Date.now(),
-      sender: this.nodeId
-    });
+    };
+    this.broadcast(peerDiscoveryMessage);
   }
 
-  private handleMessage(message: NetworkMessage, socket: WebSocket): void {
-    switch (message.type) {
+  private onMessage(ws: WebSocket, message: string) {
+    const networkMessage: NetworkMessage = JSON.parse(message);
+    switch (networkMessage.type) {
       case 'TRANSACTION':
-        if (message.data) this.handleTransaction(message.data as Transaction);
+        this.handleTransaction(networkMessage.data as Transaction);
         break;
       case 'BLOCK':
-        if (message.data) this.handleBlock(message.data as Block);
+        this.handleBlock(networkMessage.data as Block);
         break;
       case 'PEER_DISCOVERY':
-        if (message.data) this.handlePeerDiscovery(message.data as { nodeId: string }, socket);
+        if (networkMessage.data) {
+          this.handlePeerDiscovery(networkMessage.data as { nodeId: string });
+        }
         break;
       case 'SYNC_REQUEST':
-        this.handleSyncRequest(socket);
+        this.handleSyncRequest(ws);
         break;
       case 'SYNC_RESPONSE':
-        if (message.data && 'chain' in message.data && 'mempool' in message.data) {
-          this.handleSyncResponse(message.data as { chain: Block[]; mempool: Transaction[] });
+        if (Array.isArray(networkMessage.data)) {
+          this.handleSyncResponse(networkMessage.data as Block[]);
         }
         break;
     }
   }
 
-  private handleTransaction(transaction: Transaction): void {
-    if (!this.mempool.has(transaction)) {
-      this.mempool.add(transaction);
-      this.broadcast({
-        type: 'TRANSACTION',
-        data: transaction,
-        timestamp: Date.now(),
-        sender: this.nodeId
-      });
-    }
-  }
-
-  private handleBlock(block: Block): void {
-    // Validate and add block to chain
-    if (this.blockchain.isValidBlock(block)) {
-      this.blockchain.addBlock(block);
-      // Clean mempool of included transactions
-      this.cleanMempool(block.transactions);
-      this.broadcast({
-        type: 'BLOCK',
-        data: block,
-        timestamp: Date.now(),
-        sender: this.nodeId
-      });
-    }
-  }
-
-  private handlePeerDiscovery(data: { nodeId: string }, socket: WebSocket): void {
-    if (data.nodeId !== this.nodeId && !this.peers.has(data.nodeId)) {
-      this.peers.set(data.nodeId, socket);
-      console.log(`New peer connected: ${data.nodeId}`);
-    }
-  }
-
-  private handleSyncRequest(socket: WebSocket): void {
-    const syncData = {
-      chain: this.blockchain.chain,
-      mempool: Array.from(this.mempool)
-    };
-    
-    socket.send(JSON.stringify({
-      type: 'SYNC_RESPONSE',
-      data: syncData,
+  private handleTransaction(transaction: Transaction) {
+    this.mempool.add(transaction);
+    this.broadcast({
+      type: 'TRANSACTION',
+      data: transaction,
       timestamp: Date.now(),
-      sender: this.nodeId
+    });
+  }
+
+  private handleBlock(block: Block) {
+    this.blockchain.addBlock(block);
+    this.broadcast({
+      type: 'BLOCK',
+      data: block,
+      timestamp: Date.now(),
+    });
+  }
+
+  private handlePeerDiscovery(data: { nodeId: string }) {
+    console.log(`Discovered peer: ${data.nodeId}`);
+    // Additional logic for handling peer discovery can be added here
+  }
+
+  private handleSyncRequest(ws: WebSocket) {
+    const blocks = this.blockchain.chain;
+    ws.send(JSON.stringify({
+      type: 'SYNC_RESPONSE',
+      data: blocks,
+      timestamp: Date.now(),
     }));
   }
 
-  private handleSyncResponse(data: { chain: Block[], mempool: Transaction[] }): void {
-    // Validate and update chain if necessary
-    if (data.chain.length > this.blockchain.chain.length) {
-      if (this.blockchain.isValidChain(data.chain)) {
-        this.blockchain.chain = data.chain;
-      }
-    }
-    
-    // Update mempool with new transactions
-    data.mempool.forEach(tx => {
-      if (!this.mempool.has(tx)) {
-        this.mempool.add(tx);
-      }
+  private handleSyncResponse(blocks: Block[]) {
+    blocks.forEach(block => {
+      this.blockchain.addBlock(block);
     });
   }
 
-  private broadcast(message: NetworkMessage): void {
-    this.peers.forEach(socket => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(message));
-      }
+  private broadcast(message: NetworkMessage) {
+    this.peers.forEach(peer => {
+      peer.send(JSON.stringify(message));
     });
   }
 
-  private startSyncInterval(): void {
-    setInterval(() => {
-      this.syncWithPeers();
-    }, this.SYNC_INTERVAL);
-  }
-
-  private syncWithPeers(): void {
+  public async broadcastTransaction(transaction: Transaction): Promise<void> {
     this.broadcast({
-      type: 'SYNC_REQUEST',
-      data: null,
+      type: 'TRANSACTION',
+      data: transaction,
       timestamp: Date.now(),
-      sender: this.nodeId
     });
   }
 
-  // NetworkProtocol implementation
-  async broadcastTransaction(transaction: Transaction): Promise<void> {
-    this.handleTransaction(transaction);
+  public async syncTransactions(): Promise<void> {
+    // Logic to sync transactions with peers
   }
 
-  async syncTransactions(): Promise<void> {
-    this.syncWithPeers();
+  public validateNetworkState(): boolean {
+    return true; // Placeholder
   }
 
-  validateNetworkState(): boolean {
-    return this.blockchain.isChainValid();
+  private getNodeId(): string {
+    // Implement logic to generate or retrieve a unique node ID
+    return 'node-id'; // Placeholder
   }
 
-  // Public methods for connecting to peers
-  connectToPeer(peerAddress: string): void {
-    const socket = new WebSocket(peerAddress);
-    
-    socket.on('open', () => {
-      socket.send(JSON.stringify({
-        type: 'PEER_DISCOVERY',
-        data: { nodeId: this.nodeId },
-        timestamp: Date.now(),
-        sender: this.nodeId
-      }));
+  public connectToPeer(peerUrl: string) {
+    const ws = new WebSocket(peerUrl);
+    ws.on('open', () => {
+      console.log(`Connected to peer: ${peerUrl}`);
+      this.peers.add(ws);
     });
 
-    socket.on('message', (data: string) => {
-      const message: NetworkMessage = JSON.parse(data);
-      this.handleMessage(message, socket);
+    ws.on('message', (message: string) => {
+      this.onMessage(ws, message);
     });
-  }
 
-  private cleanMempool(transactions: Transaction[]): void {
-    transactions.forEach(tx => {
-      this.mempool.delete(tx);
+    ws.on('close', () => {
+      this.peers.delete(ws);
+      console.log(`Disconnected from peer: ${peerUrl}`);
+    });
+
+    ws.on('error', (error) => {
+      console.error(`Connection error: ${error}`);
     });
   }
 } 
