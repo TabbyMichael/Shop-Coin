@@ -3,7 +3,7 @@ export interface Transaction {
   to: string;
   amount: number;
   timestamp: number;
-  type?: 'payment' | 'reward' | 'loyalty';
+  type: 'purchase' | 'transfer' | 'reward' | 'stake' | 'unstake';
 }
 
 export interface ShopkeeperData {

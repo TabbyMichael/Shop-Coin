@@ -106,4 +106,66 @@ export class Blockchain {
     }
     return true;
   }
+
+  public isValidBlock(block: Block): boolean {
+    // Verify block hash
+    if (block.hash !== block.calculateHash()) {
+      return false;
+    }
+
+    // Verify previous hash
+    if (block.previousHash !== this.getLatestBlock().hash) {
+      return false;
+    }
+
+    // Verify transactions
+    for (const tx of block.transactions) {
+      if (!this.isValidTransaction(tx)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  public isValidChain(chain: Block[]): boolean {
+    // Verify genesis block
+    if (JSON.stringify(chain[0]) !== JSON.stringify(this.chain[0])) {
+      return false;
+    }
+
+    // Verify chain
+    for (let i = 1; i < chain.length; i++) {
+      const block = chain[i];
+      const previousBlock = chain[i - 1];
+
+      if (block.previousHash !== previousBlock.hash) {
+        return false;
+      }
+
+      if (block.hash !== block.calculateHash()) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private isValidTransaction(transaction: Transaction): boolean {
+    if (transaction.from === 'network') {
+      return true; // Mining rewards and system transactions
+    }
+
+    const senderBalance = this.getBalance(transaction.from);
+    return senderBalance >= transaction.amount;
+  }
+
+  public addBlock(block: Block): void {
+    if (this.isValidBlock(block)) {
+      this.chain.push(block);
+      this.totalSupply += block.transactions
+        .filter(tx => tx.from === 'network')
+        .reduce((sum, tx) => sum + tx.amount, 0);
+    }
+  }
 }
