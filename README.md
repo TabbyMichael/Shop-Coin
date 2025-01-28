@@ -1,9 +1,28 @@
-<invoke name="edit_file">
-2|<parameter name="target_file">README.md</parameter>
-<parameter name="instructions">Enhancing the README with detailed technical specifications and implementation details</parameter>
-<parameter name="code_edit"># ShopCoin 🪙
+# ShopCoin 🪙
 
 A next-generation blockchain-based payment and loyalty system that revolutionizes retail transactions and customer rewards.
+
+![ShopCoin Homepage](/public/assets/homepage.png)
+
+## 📋 Overview
+
+![System Overview](/public/assets/Overview.png)
+
+ShopCoin is a comprehensive blockchain solution designed specifically for retail transactions and customer loyalty programs. Our system combines the security of blockchain technology with the convenience of modern payment systems.
+
+## ✨ Key Features
+
+![Key Features](/public/assets/Features.png)
+
+- Secure blockchain-based transactions
+- Integrated loyalty program
+- Real-time payment processing
+- Smart contract automation
+- Merchant analytics dashboard
+
+## 🚀 Getting Started
+
+![Getting Started](/public/assets/Started.png)
 
 ## 🔒 Technical Architecture
 
@@ -252,6 +271,4 @@ class BlockchainError extends Error {
 2. Advanced Smart Contracts
 3. Mobile Wallet Development
 4. Enhanced Privacy Features
-5. Governance System</parameter>
-<parameter name="blocking">true</parameter>
-</invoke>
+5. Governance System
